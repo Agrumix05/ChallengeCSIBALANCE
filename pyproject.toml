@@ -21,6 +21,7 @@ dependencies = [
     "torchvision>=0.22.1",
     "kaggle (>=1.8.2,<2.0.0)",
     "plotly (>=6.5.0,<7.0.0)",
+    "xgboost (>=3.1.2,<4.0.0)",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -37,9 +38,20 @@ clientapp = "challengcsibalance.client.client_app:app"
 # Custom config values accessible via `context.run_config`
 [tool.flwr.app.config]
 num-server-rounds = 3
-fraction-train = 0.5
+fraction-train = 1.0
+fraction-evaluate = 1.0
 local-epochs = 1
-lr = 0.01
+
+# XGBoost parameters
+params.n_estimators=300
+params.max_depth=4
+params.learning_rate=0.05
+params.subsample=0.8
+params.colsample_bytree=0.8
+params.reg_alpha=0.1
+params.reg_lambda=1.0
+params.random_state=42
+params.n_jobs=-1
 
 # Default federation to use when running the app
 [tool.flwr.federations]
@@ -47,10 +59,4 @@ default = "local-simulation"
 
 # Local simulation federation with 10 virtual SuperNodes
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 10
-
-# Remote federation example for use with SuperLink
-[tool.flwr.federations.remote-federation]
-address = "<SUPERLINK-ADDRESS>:<PORT>"
-insecure = true  # Remove this line to enable TLS
-# root-certificates = "<PATH/TO/ca.crt>"  # For TLS setup
+options.num-supernodes = 9
