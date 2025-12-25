@@ -2,15 +2,17 @@
 
 import numpy as np
 import xgboost as xgb
-from flwr.app import ArrayRecord, Context
+from flwr.app import ArrayRecord, ConfigRecord, Context
 from flwr.common.config import unflatten_dict
 from flwr.serverapp import Grid, ServerApp
-from flwr.serverapp.strategy import FedXgbBagging
+from flwr.serverapp.strategy import FedXgbBagging, FedXgbCyclic
+
 from challengcsibalance.lib.task import replace_keys
 from xgboost import XGBRegressor
 
 # Create ServerApp
 app = ServerApp()
+from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 
 
 @app.main()
@@ -18,6 +20,7 @@ def main(grid: Grid, context: Context) -> None:
     print("Starting Flower XGBoost server...")
     print(context.run_config)
     # Read run config
+    
     num_rounds = context.run_config["num-server-rounds"]
     fraction_train = context.run_config["fraction-train"]
     fraction_evaluate = context.run_config["fraction-evaluate"]
@@ -38,12 +41,15 @@ def main(grid: Grid, context: Context) -> None:
         fraction_train=fraction_train,
         fraction_evaluate=fraction_evaluate,
     )
+    # strategy = FedXgbCyclic()
+    # Grid dei client con parametro diverso
 
     # # Start strategy, run FedXgbBagging for `num_rounds`
     result = strategy.start(
         grid=grid,
         initial_arrays=arrays,
         num_rounds=num_rounds,
+        
     )
 
     # # Save final model to disk
@@ -54,17 +60,65 @@ def main(grid: Grid, context: Context) -> None:
     booster.load_model(global_model)
 
 
-    # X_train, y_train, X_val, y_val = load_test_data()
-    # dtest=xgb.DMatrix(X_val, label=y_val)
-    # preds = booster.predict(dtest)
-    # from sklearn.metrics import mean_absolute_error
-    # mae = mean_absolute_error(y_val, preds)
-    # print(f"Final MAE on validation set: {mae}")
-
-    booster.save_model("final_model.json")
+    booster.save_model("final_model_min_max.json")
 
 
 
+# server.py
+
+# # Importa Grid se non già presente
+# from flwr.app.client_manager import Grid
+
+# # ... codice esistente ...
+
+# @app.main()
+# def main(grid: Grid, context: Context) -> None: 
+#     print("Starting Flower XGBoost server...")
+#     print(context.run_config)
+    
+#     # Read run config
+#     num_rounds = context.run_config["num-server-rounds"]
+#     fraction_train = context.run_config["fraction-train"]
+#     fraction_evaluate = context.run_config["fraction-evaluate"]
+    
+#     # Flatted config dict and replace "-" with "_"
+#     cfg = replace_keys(unflatten_dict(context.run_config))
+#     params = cfg["params"]
+
+#     # Init global model
+#     global_model = b""
+#     arrays = ArrayRecord([np.frombuffer(global_model, dtype=np.uint8)])
+
+#     # -----------------------------
+#     # NUOVA PARTE: Creazione client Grid
+#     NUM_CLIENTS = 10  # cambia in base a quanti client vuoi lanciare
+#     grid = Grid()
+#     for i in range(NUM_CLIENTS):
+#         grid.add_node_config({
+#             "client-id": f"client_{i}",
+#             "partition-id": i,
+#             "num-partitions": NUM_CLIENTS
+#         })
+#     # -----------------------------
+
+#     # Initialize FedXgbBagging strategy
+#     strategy = FedXgbBagging(
+#         fraction_train=fraction_train,
+#         fraction_evaluate=fraction_evaluate,
+#     )
+
+#     # Start strategy
+#     result = strategy.start(
+#         grid=grid,
+#         initial_arrays=arrays,
+#         num_rounds=num_rounds,
+#     )
+
+#     # Save final model to disk
+#     global_model = bytearray(result.arrays["0"].numpy().tobytes())
+#     booster = xgb.Booster()
+#     booster.load_model(global_model)
+#     booster.save_model("final_model.json")
 
 
 
